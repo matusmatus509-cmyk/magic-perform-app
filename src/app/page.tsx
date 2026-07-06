@@ -15,6 +15,7 @@ type Stage = "menu" | "edit" | "select" | "settings" | "perform" | "notes";
 export default function Home() {
   const [stage, setStage] = useState<Stage>("menu");
   const [settings, setSettings] = useState<MagicSettings>(defaultSettings);
+  const [targetNoteId, setTargetNoteId] = useState<number | null>(null);
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -46,11 +47,33 @@ export default function Home() {
         setStage("notes");
         return;
       }
+
       await fetch("/api/magic-list/reorder", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ itemId: s.forceItemId, targetPosition: position }),
       });
+
+      const listRes = await fetch("/api/magic-list");
+      if (!listRes.ok) return;
+      const list: { label: string; position: number }[] = await listRes.json();
+
+      const lines = list.map(
+        (item) => `${item.position + 1}. ${item.label}`
+      );
+      const content = lines.join("\n");
+      const forceItem = list.find((item) => item.position === position);
+      const title = forceItem ? forceItem.label : "Zoznam";
+
+      const noteRes = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, content }),
+      });
+      if (noteRes.ok) {
+        const note = await noteRes.json();
+        setTargetNoteId(note.id);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -58,12 +81,22 @@ export default function Home() {
     }
   }, []);
 
+  const handleExitNotes = useCallback(() => {
+    setTargetNoteId(null);
+    setStage("menu");
+  }, []);
+
   if (stage === "perform") {
     return <FakeLauncher settings={settings} onComplete={handleComplete} />;
   }
 
   if (stage === "notes") {
-    return <NotesScreen />;
+    return (
+      <NotesScreen
+        targetNoteId={targetNoteId}
+        onExitNotes={handleExitNotes}
+      />
+    );
   }
 
   if (stage === "edit") {

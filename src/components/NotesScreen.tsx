@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import NotesList from "@/components/NotesList";
 import NoteEditor from "@/components/NoteEditor";
 
@@ -13,13 +13,19 @@ export interface Note {
   updatedAt: string;
 }
 
-export default function NotesScreen() {
+interface NotesScreenProps {
+  targetNoteId?: number | null;
+  onExitNotes?: () => void;
+}
+
+export default function NotesScreen({ targetNoteId, onExitNotes }: NotesScreenProps) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const openedRef = useRef<number | null>(null);
 
   const fetchNotes = useCallback(async () => {
     try {
@@ -27,6 +33,7 @@ export default function NotesScreen() {
       if (res.ok) {
         const data = await res.json();
         setNotes(data);
+        return data as Note[];
       }
     } catch (e) {
       console.error(e);
@@ -42,6 +49,29 @@ export default function NotesScreen() {
       cancelled = true;
     };
   }, [fetchNotes]);
+
+  useEffect(() => {
+    if (!targetNoteId || openedRef.current === targetNoteId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/notes/${targetNoteId}`);
+        if (res.ok && !cancelled) {
+          const note = await res.json();
+          if (note) {
+            setSelectedNote(note);
+            setIsEditorOpen(true);
+            openedRef.current = targetNoteId;
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [targetNoteId]);
 
   const handleNewNote = async () => {
     try {
@@ -113,7 +143,12 @@ export default function NotesScreen() {
   const handleCloseEditor = () => {
     setIsEditorOpen(false);
     setSelectedNote(null);
-    fetchNotes();
+    openedRef.current = null;
+    if (onExitNotes) {
+      onExitNotes();
+    } else {
+      fetchNotes();
+    }
   };
 
   const filteredNotes = notes.filter((n) => {
