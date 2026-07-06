@@ -5,9 +5,10 @@ import type { MagicListItem } from "@/db/schema";
 
 interface EditListProps {
   onBack: () => void;
+  currentList: string;
 }
 
-export default function EditList({ onBack }: EditListProps) {
+export default function EditList({ onBack, currentList }: EditListProps) {
   const [items, setItems] = useState<MagicListItem[]>([]);
   const [draft, setDraft] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +19,7 @@ export default function EditList({ onBack }: EditListProps) {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/magic-list");
+      const res = await fetch(`/api/magic-list?list=${encodeURIComponent(currentList)}`);
       if (res.ok) {
         const data = (await res.json()) as MagicListItem[];
         setItems(data);
@@ -29,7 +30,7 @@ export default function EditList({ onBack }: EditListProps) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentList]);
 
   useEffect(() => {
     fetchItems();
@@ -44,7 +45,7 @@ export default function EditList({ onBack }: EditListProps) {
       await fetch("/api/magic-list", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: cleaned }),
+        body: JSON.stringify({ items: cleaned, listName: currentList }),
       });
       await fetchItems();
     } catch (e) {

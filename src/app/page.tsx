@@ -42,28 +42,52 @@ export default function Home() {
     try {
       const setRes = await fetch("/api/magic-settings");
       if (!setRes.ok) return;
-      const s = await setRes.json();
+      const s: MagicSettings = await setRes.json();
       if (!s?.forceItemId) {
         setStage("notes");
         return;
       }
 
+      const listName = s.currentList ?? "default";
+
       await fetch("/api/magic-list/reorder", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId: s.forceItemId, targetPosition: position }),
+        body: JSON.stringify({
+          itemId: s.forceItemId,
+          targetPosition: position,
+          listName,
+        }),
       });
 
-      const listRes = await fetch("/api/magic-list");
+      const listRes = await fetch(`/api/magic-list?list=${encodeURIComponent(listName)}`);
       if (!listRes.ok) return;
       const list: { label: string; position: number }[] = await listRes.json();
 
-      const lines = list.map(
-        (item) => `${item.position + 1}. ${item.label}`
-      );
+      // Delete all previous notes so only the current perform note appears
+      const existingNotesRes = await fetch("/api/notes");
+      if (existingNotesRes.ok) {
+        const existingNotes: { id: number }[] = await existingNotesRes.json();
+        await Promise.all(
+          existingNotes.map((n) =>
+            fetch(`/api/notes/${n.id}`, { method: "DELETE" })
+          )
+        );
+      }
+
+      // Build content using format
+      const format = s.noteContentFormat ?? "numbered";
+      const lines = list.map((item) => {
+        const idx = item.position + 1;
+        if (format === "bullets" || format === "bullet") return `\u2022 ${item.label}`;
+        if (format === "plain") return item.label;
+        return `${idx}. ${item.label}`;
+      });
       const content = lines.join("\n");
+
       const forceItem = list.find((item) => item.position === position);
-      const title = forceItem ? forceItem.label : "Zoznam";
+      const title =
+        (s.noteTitleTemplate?.trim() || forceItem?.label) ?? forceItem?.label ?? "Zoznam";
 
       const noteRes = await fetch("/api/notes", {
         method: "POST",
@@ -100,11 +124,21 @@ export default function Home() {
   }
 
   if (stage === "edit") {
-    return <EditList onBack={() => setStage("menu")} />;
+    return (
+      <EditList
+        onBack={() => setStage("menu")}
+        currentList={settings.currentList ?? "default"}
+      />
+    );
   }
 
   if (stage === "select") {
-    return <SelectForceItem onBack={() => setStage("menu")} />;
+    return (
+      <SelectForceItem
+        onBack={() => setStage("menu")}
+        currentList={settings.currentList ?? "default"}
+      />
+    );
   }
 
   if (stage === "settings") {

@@ -60,10 +60,13 @@ export function buildIconPages(
 export const defaultSettings = {
   id: 0,
   forceItemId: null as number | null,
+  currentList: "default",
   wallpaperColor: "#0b1f3a",
   launcherLabel: "Notes",
   gridRows: 5,
   gridCols: 4,
   pagecount: 3,
+  noteTitleTemplate: "",
+  noteContentFormat: "numbered" as const,
   updatedAt: new Date(0),
 } as MagicSettings;

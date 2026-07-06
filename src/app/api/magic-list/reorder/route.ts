@@ -5,7 +5,8 @@ import { asc, eq } from "drizzle-orm";
 
 export async function PUT(req: NextRequest) {
   try {
-    const { itemId, targetPosition } = await req.json();
+    const { itemId, targetPosition, listName } = await req.json();
+    const ln = listName ?? "default";
 
     if (
       typeof itemId !== "number" ||
@@ -20,6 +21,7 @@ export async function PUT(req: NextRequest) {
     const allRows = await db
       .select()
       .from(magicList)
+      .where(eq(magicList.listName, ln))
       .orderBy(asc(magicList.position));
 
     const moving = allRows.find((r) => r.id === itemId);
@@ -28,7 +30,6 @@ export async function PUT(req: NextRequest) {
     }
 
     const others = allRows.filter((r) => r.id !== itemId);
-
     others.splice(Math.min(targetPosition, others.length), 0, moving);
 
     for (let i = 0; i < others.length; i++) {
@@ -41,6 +42,7 @@ export async function PUT(req: NextRequest) {
     const refreshed = await db
       .select()
       .from(magicList)
+      .where(eq(magicList.listName, ln))
       .orderBy(asc(magicList.position));
     return NextResponse.json(refreshed);
   } catch (error) {

@@ -5,9 +5,10 @@ import type { MagicListItem, MagicSettings } from "@/db/schema";
 
 interface SelectForceItemProps {
   onBack: () => void;
+  currentList: string;
 }
 
-export default function SelectForceItem({ onBack }: SelectForceItemProps) {
+export default function SelectForceItem({ onBack, currentList }: SelectForceItemProps) {
   const [items, setItems] = useState<MagicListItem[]>([]);
   const [settings, setSettings] = useState<MagicSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -16,7 +17,7 @@ export default function SelectForceItem({ onBack }: SelectForceItemProps) {
     setLoading(true);
     try {
       const [listRes, setRes] = await Promise.all([
-        fetch("/api/magic-list"),
+        fetch(`/api/magic-list?list=${encodeURIComponent(currentList)}`),
         fetch("/api/magic-settings"),
       ]);
       if (listRes.ok) setItems(await listRes.json());
@@ -29,7 +30,7 @@ export default function SelectForceItem({ onBack }: SelectForceItemProps) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentList]);
 
   useEffect(() => {
     fetchAll();
