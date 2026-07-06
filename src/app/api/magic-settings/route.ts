@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { magicSettings, magicList } from "@/db/schema";
-import { desc, eq, ne } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 export async function GET() {
   try {
@@ -72,7 +72,6 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-    void ne;
     return NextResponse.json(row);
   } catch (error) {
     console.error("PUT /api/magic-settings error:", error);
